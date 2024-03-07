@@ -1,0 +1,220 @@
+<html>
+<head>
+    <style>
+      table {
+          border-collapse: collapse;
+          width: 100%;
+      }
+      td {
+          padding: 10px;
+          border: 1px solid #ddd;
+          text-align: center;
+      }
+      img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 0 auto;
+      }
+      button {
+          font-size: 10pt;
+      }
+      .container {
+          display: flex;
+      }
+      .column {
+          flex: 1;
+          margin-right: 20px;
+      }
+      
+    </style>
+    <script src="https://unpkg.com/@onflow/fcl@1.9.0"></script>
+    <script>
+      onflowFcl.config({
+              "accessNode.api": "https://rest-testnet.onflow.org",
+              "discovery.wallet": "https://fcl-discovery.onflow.org/testnet/authn", // Endpoint set to Testnet
+            });
+    </script>
+</head>
+<body onload="setup()">
+
+  <p id="stat">ConnectionState: <strong>new</strong> IceConnectionState: <strong>new</strong></p>
+  <div id="connectionPanel">
+    <div class="container">
+        <div class="column">
+          <button id="createChannelBtn" onclick="createChannel()">Create Channel</button><br>
+          <label for="channelDescription">Channel Description:</label><br>
+          <textarea id="channelDescription" name="channelDescription" rows="30" cols="40" placeholder="Click Create Channel to create a new channel, or enter channel description to join an existing channel."></textarea><br>
+        </div>
+      <div class="column">
+          <button id="requestToJoinBtn" onclick="requestToJoin()" disabled="true">Request to Join</button><br>
+          <label for="joinRequest">Join Request:</label><br>
+          <textarea id="joinRequest" name="joinRequest" rows="30" cols="40" placeholder="Create a channel, or paste a channel description to the left."></textarea><br>
+          <button disabled="true" id="acceptBtn" onclick="acceptConnection()">Accept</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div hidden="true" id="gamePanel">
+    <table>
+        <tr>
+            <td onclick="cellClicked(1)"><img id="image1" onclick="cellClicked(1)" alt="Image 1"></td>
+            <td onclick="cellClicked(2)"><img id="image2" onclick="cellClicked(2)" alt="Image 2"></td>
+            <td onclick="cellClicked(3)"><img id="image3" onclick="cellClicked(3)" alt="Image 3"></td>
+        </tr>
+        <tr>
+            <td onclick="cellClicked(4)"><img id="image4" onclick="cellClicked(4)" alt="Image 4"></td>
+            <td onclick="cellClicked(5)"><img id="image5" onclick="cellClicked(5)" alt="Image 5"></td>
+            <td onclick="cellClicked(6)"><img id="image6" onclick="cellClicked(6)" alt="Image 6"></td>
+        </tr>
+        <tr>
+            <td onclick="cellClicked(7)"><img id="image7" onclick="cellClicked(7)" alt="Image 7"></td>
+            <td onclick="cellClicked(8)"><img id="image8" onclick="cellClicked(8)" alt="Image 8"></td>
+            <td onclick="cellClicked(9)"><img id="image9" onclick="cellClicked(9)" alt="Image 9"></td>
+        </tr>
+    </table>
+    <div id="chatArea">
+      Chat: <input id="chat"><br>
+      <pre id="output">Chat: </pre>
+    </div>
+  </div>
+
+
+<script type="text/javascript">
+  
+  const exImage = "data:image/png;base64,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"
+  const ohImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAAAAAB5Gfe6AAAJWElEQVR42u3de2wURRgA8L0+6V0L5VFsKZQrCKUFednaAkWICBoMICWAiYBgRLQIlvpKxEQiIRGDAZSHoolGVAilCthEQQXl0QdKS6EUQls4WpRCoO+7cn3cePCPhO+jXLszO3Plm/IPk9vZb3/73d7s7uysiWkPdvHRCIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACIAACKAzFZO0h6acDofd4WgKspgtZrPvgwPQaLvoLjZbbeudtYG9o6Ot7n99fTo1QEl2TvYZV1ufCH5szNikHp0SoOTHoznXPQspZsykaV07F0BJRsbJdi0QOGX29G6dBaB8e0ZhBxYLmDJndpdOAJC/LqPl3js6JKCh4d4HhbClqWHeDcB+XncI63xYY+PiYh8KCQm49T97fV3Z2eLiszXIJ4MWpA8WLMAElu/ikBVGLNpVjX769NqJ/sgemlEoMkQmECB/HNyc3ivzXW0sUpv5DOwI+C6t8kaA60vgpiRud953udL0ULBcz89avQ2gZVN3sBmTj3u2rP2TnmDZUUe8C6BiPNiEgXs8X7xqmR84FLzd7EUAWWAXBn94s10tFD0JBJNs3gLQlA6CH3G+3a1sAL8IoZneAXAhAWz/S40daCevP2hn6U0vAMgF6W/Z3rGWqqYDgeRq5QH2W+4Ouvvxjrbleg0IDP9XcYAd4JvbW09H7h0gEF2iNMCnprsDjjyrq8HVsC+ZrzDAKhBu3zKdTa4DTXY9rCzABhCspUB3o8uhQKGiADtB/vvs0d9qy1Qg0MemJMDBABDpWh7t1g0D7Q65riDASXgZcyGflm29QctjHMoBXIoAUQ7mFWUWvK4wrVUxgOZEeB0jl9teWgwFPlAMAPZYtJX8vqf1AyDvEaUAfgU/ANrIJo6H6qPw6lJUlUIAV8PhHuJ7KfMNmGEp6gC4nobhLeHbYa3pBVexVRmALchNzkrO5yyb4Dq6lCkCcAO5m7ua91lr8xC4khmKAKTC0CLt3C9c7EPusRxQAuAUMrrjC/6Xrhi80KzFcbhSrH9ExvJWeM4+X8A9vLdgVfFmBe4NZiBtvi8gAZhrEFxR6DXpGeBaidz0ThVyHzsN1tV8JD0D9iBNLmJCih3ebdO61srOgI+RujQxN/LNL8O6ui8lD5A4Ds8CtZEFgoYynEWGG0SV+UkdKYolwFxRYzlihyMDkDI0mQC2TKRyjrDRLM95uAuMA9gG+wBa/ABhAFhunciTCbDLyG+Apg1I8DAGowDyy5DKWQJHdGFt72byALADkDVaIMAT2DjM42oBTBA5pm90Vw+jMAagAPsGTBQJ4Dse+w5IA0DXLBQAbf3SX7IAsFGw/a2GA6BxGAHgzEcqk4VuvzbKjFRmSwLIdyKVw8QC+GKjj3MkAaDwQ8UCoMDXyhQCEJwBOHC2OgAWq4QMkARQXomdsZpkZECeFIBSrDJO8PZr/UI8DUU4wEWssq9oAHQN9TeUAYgQDhDhcSwEIAMgXDhAOGWAIgA3K+VkAApgkwBQh1UGmYUD9MIqayUA2LFKA5717eJxMIIBHCoBOCgDFMmAQPEAgZQBdAyApaXZeAAX56sL+gJ2GQ+A/uLfFA+ArsIn8AEHsEg4BlhUAjBrlAFqZICTMkB4caqSASFoh6RJOECVx8EIBgjujtVWCge4glVGSQDQoj0Oj2up9DiWTgpwRW2AygcIYABlAFL+EQ5wGTtDDFcmA4pFb//VaiwUkwyAQaEyAIqwygRNBoApCamsrZABMFYKAL7aMzIAxikEUCQBIDRODkCir/EADMuwJJMcgOBHkMpjYgFO1XM+BOi6jDkRqSu9LBQAHRQ6QRYA+mTAH4YDhCfLAhgX6ek+4lVch7H94CMLwDTL6AwoqEEq9T2kpUsPW/UFm0CA35G6iGR5AGOx78BugQAZ3L8B+gBMs5HKneK2v/RvpFLnU2r6+F5FuiAnSoUBYLYjkmUCDJ5uaApgLb+ps02dD08fQ/yHnRa0/aeRZ4f7lfnLzABtHHJOXJQnCAB7VP51f72t6px/ADvmzxEzgUJ1MFxVN+kTKMx8GNZlXhKSAJ83wLol+l/GolcQe4A+XUQCNCGdjl76Z1TTP4/QJBiX/pk9kPINlhQqTKR0BpnDYg3/7W9BHpYZ3aoCAFsBIwup5A6wFfkJz1ZjLrEaOOmptpj39tcg79tZoMp0etthbL6nOAMgHb4eV5SZUfJ5GN1kvttfCict1vapM6VmPfIypB1c5xGbDFewQqVJVQvgQMXuFRwBNsDtT3CqBIDNeDnJxW37i+AA4W4XmFIADLk8uJ7X9jtHINeGmGIADXBSsS68ZtZdIbKnxW1y9euxIMooLr9TDDkLTmPqAbDyfiDOeB5zqx6AXe15LhUBWDF8Rdiz+jvrp+EJ71Seb93i+YqNXAv/XL0M82os1zl7ub5kJQ922Jfpy9ZSOBTrqXqmLAA7D0dOzdeTr4Vw+NcLTUxhAFY5GkQ8vbHDrR0LBa29y/s0k/ertuqngJiTL3ewrW/BkHyfzUx1ANb0ChDo+VOHulYL4fnFXqY+AGM/wNnm09p/5lIQA1p5vJx5BQCrgGNnRvzZvibsq8D5pd9qIW9eFfLKzdY1sPc2sx2viWv9qg9YPjqbMa8BcPcI4sEW+Kd5emqwfxS8xJZay7wKgLm+hjvRf86h+y9YtR5++bUpRYx5GYD7KP5eENyS2PVtvhjE+dsiZKGYLMa8EMD9+q152LzfA1P31qEfP7dxKvb4W8TGZoExMrFvn6/YvA0b3+9jHeIuYSHBwe7Rts76hjrbOXfBPqmNTpsbIHbwKRNb7Fti2lq7ObSt+/u+KYeZ6CI2A24L//J9Vk1HFhya8qJVE17EA7hL88HMvdfat0h8SkqMZkQxBODWINejWTknGj37bGTi4zOjNIOKUQC3Ssup3Ny8821+JOjRpMSkvpqBxUiA28Vuu+T+s1XUOe5Ys585zGrt7/6L9DU4HOMB/i+NDndpDjK7i7+0IGQCqFF8NAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIgAAIggE5Q/gMxQwFmcdd8eAAAAABJRU5ErkJggg=="
+  const blankImage = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAAAAAB5Gfe6AAABOElEQVR42u3QAQEAAAgCIP0/OocEE+jltwoQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAECBAgQIECAAAHJABF4ABCc3bg4AAAAAElFTkSuQmCC"
+  
+  
+//  const output = document.getElementById('output');
+  const config = {
+    iceServers: [{
+      urls: "stun:stun.l.google.com:19302" // list of free STUN servers: https://gist.github.com/zziuni/3741933
+    }]
+  };
+  const pc = new RTCPeerConnection(config);
+  const dc = pc.createDataChannel("chat", {
+    negotiated: true,
+    id: 0
+  });
+  
+  var weCreatedTheChannel = false;
+
+  const log = msg => output.innerHTML += `<br>${msg}`;
+  dc.onopen = connectionOpened;
+  dc.onmessage = handleMessage;
+  pc.oniceconnectionstatechange = e => log(pc.iceConnectionState);
+
+  chat.onkeypress = function(e) {
+    if (e.keyCode != 13) return;
+    dc.send(JSON.stringify({type: "chat", data: chat.value}));
+    log(chat.value);
+    chat.value = "";
+  };
+
+  async function createChannel() {
+    createChannelBtn.disabled = true;
+    requestToJoinBtn.disabled = true;
+    await pc.setLocalDescription(await pc.createOffer());
+    pc.onicecandidate = ({
+      candidate
+    }) => {
+      if (candidate) return;
+      weCreatedTheChannel = true;
+      channelDescription.value = pc.localDescription.sdp;
+      channelDescription.select();
+      joinRequest.placeholder = "Paste Join Request here and click Accept to connect.";
+    };
+  }
+  
+  channelDescription.oninput = async function(e) {
+    if (weCreatedTheChannel) return;
+    requestToJoinBtn.disabled = false;
+    joinRequest.placeholder = "Click Request to Join to create a join request...";
+  }
+  
+  async function requestToJoin() {
+    await pc.setRemoteDescription({
+      type: "offer",
+      sdp: channelDescription.value
+    });
+    await pc.setLocalDescription(await pc.createAnswer());
+    pc.onicecandidate = ({
+      candidate
+    }) => {
+      if (candidate) return;
+      joinRequest.focus();
+      joinRequest.value = pc.localDescription.sdp;
+      joinRequest.select();
+    };
+  }
+
+  joinRequest.oninput = async function(e) {
+    if (!weCreatedTheChannel) return;
+    acceptBtn.disabled = false;
+  }
+  
+  async function acceptConnection() {
+    acceptBtn.disabled = true;
+    pc.setRemoteDescription({
+      type: "answer",
+      sdp: joinRequest.value
+    });
+  }
+  
+  async function connectionOpened(e) {
+    connectionPanel.hidden = true
+    gamePanel.hidden = false
+  }
+  
+  var gameState = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+  async function handleMessage(e) {
+    const msg = JSON.parse(e.data)
+    console.log(msg);
+    console.log(msg.type);
+    console.log(msg.toString());
+    switch(msg.type) {
+    case "chat":
+      log(`> ${msg.data}`);
+      break;
+    case "gameState":
+      gameState = msg.data;
+      updateImages();
+      break;
+    }
+  }
+  
+  pc.onconnectionstatechange = ev => handleChange();
+  pc.oniceconnectionstatechange = ev => handleChange();
+
+  function handleChange() {
+    let stat = 'ConnectionState: <strong>' + pc.connectionState + '</strong> IceConnectionState: <strong>' + pc.iceConnectionState + '</strong>';
+    document.getElementById('stat').innerHTML = stat;
+    console.log('' + new Date().toISOString() + ': ConnectionState: ' + pc.connectionState + ' IceConnectionState: ' + pc.iceConnectionState);
+  }
+
+  function updateImages() {
+    const imageData = [blankImage, exImage, ohImage];
+
+    for (let i = 1; i <= 9; i++) {
+      let imageElement = document.getElementById('image' + i);
+      imageElement.src = imageData[gameState[i-1]];
+    }
+  }
+  
+  function cellClicked(index) {
+    gameState[index - 1] = weCreatedTheChannel ? 1 : 2;
+    dc.send(JSON.stringify({type: "gameState", data: gameState}))
+    updateImages();
+  }
+  
+  function setup() {
+    updateImages();
+    handleChange();
+  }
+  
+</script>
+</body></html>
