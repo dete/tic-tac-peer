@@ -65,6 +65,7 @@
 			}
 		},
 		"TicTacPeer": "cadence/contracts/tic-tac-peer.cdc",
+		"StateChannel": "cadence/contracts/StateChannel.cdc",
 		"ViewResolver": {
 			"source": "cadence/contracts/utility/ViewResolver.cdc",
 			"aliases": {
