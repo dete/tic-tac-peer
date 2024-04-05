@@ -1,4 +1,4 @@
-access(all) contract StateChannel {
+access(all) contract StateChannels {
 
     access(all) enum State : Int8 {
         access(all) case Start
@@ -14,7 +14,7 @@ access(all) contract StateChannel {
     access(all) struct interface Action {}
 
     access(all) struct interface ActionHandler {
-        access(all) fun handleAction(context: StateChannel.ChannelContext, action: {Action}) : ChannelContext
+        access(all) fun handleAction(context: ChannelContext, action: {Action}) : ChannelContext
 
         access(all) fun isValidTransition(context: ChannelContext, action: {Action}, newContext: ChannelContext): Bool {
 
@@ -69,16 +69,19 @@ access(all) contract StateChannel {
 
     access(all) struct ChannelContext {
         access(all) let state : State
-        access(all) let signerId : Int32?
-        access(all) let participants: {Int32: Participant}
-        access(self) let nextParticipantId: Int32
+        access(all) let signerId : UInt32?
+        access(all) let participants: {UInt32: Participant}
+        access(self) let nextParticipantId: UInt32
+        access(self) let channelStep: UInt64
         access(all) let appContext : {AppContext}
 
-        view init(state: State, signerId: Int32?, participants: {Int32: Participant}, nextParticipantId: Int32, appContext: {AppContext}) {
+        access(contract) view init(state: State, signerId: UInt32?, participants: {UInt32: Participant}, nextParticipantId: UInt32, channelStep: UInt64,
+                appContext: {AppContext}) {
             self.state = state
             self.signerId = signerId
             self.participants = participants
             self.nextParticipantId = nextParticipantId
+            self.channelStep = channelStep
             self.appContext = appContext
         }
 
@@ -107,15 +110,15 @@ access(all) contract StateChannel {
 
         access(all) view fun updateState(_ newState: State): ChannelContext {
             return ChannelContext(state: newState, signerId: self.signerId, participants: self.participants,
-                    nextParticipantId: self.nextParticipantId, appContext: self.appContext)
+                    nextParticipantId: self.nextParticipantId, channelStep: self.channelStep, appContext: self.appContext)
         }
 
-        access(all) view fun updateSigner(id newSignerId: Int32): ChannelContext {
+        access(all) view fun updateSigner(id newSignerId: UInt32): ChannelContext {
             pre {
                 self.participants.containsKey(newSignerId): "Invalid signer ID"
             }
             return ChannelContext(state: self.state, signerId: newSignerId, participants: self.participants,
-                    nextParticipantId: self.nextParticipantId, appContext: self.appContext)
+                    nextParticipantId: self.nextParticipantId, channelStep: self.channelStep, appContext: self.appContext)
         }
 
         access(all) view fun addParticipant(_ newParticipant: Participant): ChannelContext {
@@ -123,7 +126,7 @@ access(all) contract StateChannel {
             newParticipantSet[self.nextParticipantId] = Participant(signingKey: newParticipant.signingKey, id: self.nextParticipantId, roles: newParticipant.roles)
             
             return ChannelContext(state: self.state, signerId: self.signerId, participants: newParticipantSet,
-                    nextParticipantId: self.nextParticipantId + 1, appContext: self.appContext)
+                    nextParticipantId: self.nextParticipantId + 1, channelStep: self.channelStep, appContext: self.appContext)
         }
 
         access(all) fun removeSigner(): ChannelContext {
@@ -135,14 +138,14 @@ access(all) contract StateChannel {
             newParticipantSet.remove(key: self.signerId!)
 
             return ChannelContext(state: self.state, signerId: nil, participants: newParticipantSet, 
-                    nextParticipantId: self.nextParticipantId, appContext: self.appContext)
+                    nextParticipantId: self.nextParticipantId, channelStep: self.channelStep, appContext: self.appContext)
         }
 
         // TODO: Add convenience functions to add/remove roles
 
         access(all) view fun updateAppContext(_ newAppContext: {AppContext}): ChannelContext {
             return ChannelContext(state: self.state, signerId: self.signerId, participants: self.participants,
-                    nextParticipantId: self.nextParticipantId, appContext: newAppContext)
+                    nextParticipantId: self.nextParticipantId, channelStep: self.channelStep, appContext: newAppContext)
         }
 
         access(all) view fun isValid(): Bool {
@@ -154,10 +157,10 @@ access(all) contract StateChannel {
 
     access(all) struct Participant {
         access(all) let signingKey: PublicKey
-        access(all) let id: Int32
+        access(all) let id: UInt32
         access(all) let roles: {String: Bool}
 
-        view init(signingKey: PublicKey, id: Int32, roles: {String: Bool}) {
+        view init(signingKey: PublicKey, id: UInt32, roles: {String: Bool}) {
             self.signingKey = signingKey
             self.id = id
             self.roles = roles
@@ -191,4 +194,17 @@ access(all) contract StateChannel {
             }
         }
     }
+
+    access(all) struct DummyContext: AppContext {
+        access(all) view fun isValid(): Bool { return true }
+    }
+
+    access(all) resource StateChannel {
+        access(self) var latestContext: ChannelContext
+
+        init() {
+            self.latestContext = ChannelContext(state: State.Start, signerId: nil, participants: {}, nextParticipantId: 0, channelStep: 0, appContext: DummyContext())
+        }
+    }
+
 }

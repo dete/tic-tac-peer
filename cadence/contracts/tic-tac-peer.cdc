@@ -1,8 +1,8 @@
-import StateChannel from "StateChannel"
+import StateChannels from "StateChannels"
 
 access (all) contract TicTacPeer {
 
-    access(all) struct TicTacToeContext: StateChannel.ComparableAppContext {
+    access(all) struct TicTacToeContext: StateChannels.ComparableAppContext {
         access(all) let p1SeedCommitment: UInt256
         access(all) let p2SeedContribution: UInt256
         access(all) let board: [UInt8; 9]
@@ -54,7 +54,7 @@ access (all) contract TicTacPeer {
             return true
         }
 
-        access(all) view fun matchesContext(_ otherContext: {StateChannel.ComparableAppContext}): Bool {
+        access(all) view fun matchesContext(_ otherContext: {StateChannels.ComparableAppContext}): Bool {
             let other: TicTacPeer.TicTacToeContext = otherContext as! TicTacToeContext
 
             if self.p1SeedCommitment != other.p1SeedCommitment { return false }
@@ -69,80 +69,80 @@ access (all) contract TicTacPeer {
         return TicTacToeContext(p1SeedCommitment: 0, p2SeedContribution: 0, board: [0, 0, 0, 0, 0, 0, 0, 0, 0])
     }
 
-    access(self) let stateTable : {StateChannel.State: {Type: StateChannel.StateTransition}}
+    access(self) let stateTable : {StateChannels.State: {Type: StateChannels.StateTransition}}
     
     init() {
         self.stateTable = {
-            StateChannel.State.Start: {
-                Type<CommitSeed>(): StateChannel.StateTransition(
+            StateChannels.State.Start: {
+                Type<CommitSeed>(): StateChannels.StateTransition(
                     handler: CommitSeedHandler(),
                     newSignerRoles: ["!initiator"],
-                    newStates: [StateChannel.State.NeedSeed]),
-                Type<StateChannel.Resign>(): StateChannel.StateTransition(
+                    newStates: [StateChannels.State.NeedSeed]),
+                Type<StateChannels.Resign>(): StateChannels.StateTransition(
                     handler: ResignationHandler(),
                     newSignerRoles: ["!signer"],
-                    newStates: [StateChannel.State.Cleanup])
+                    newStates: [StateChannels.State.Cleanup])
             },
-            StateChannel.State.NeedSeed: {
-                Type<ProvideSeed>(): StateChannel.StateTransition(
+            StateChannels.State.NeedSeed: {
+                Type<ProvideSeed>(): StateChannels.StateTransition(
                     handler: ProvideSeedHandler(),
                     newSignerRoles: ["initiator"],
-                    newStates: [StateChannel.State.MoveX]),
-                Type<StateChannel.Resign>(): StateChannel.StateTransition(
+                    newStates: [StateChannels.State.MoveX]),
+                Type<StateChannels.Resign>(): StateChannels.StateTransition(
                     handler: ResignationHandler(),
                     newSignerRoles: ["!signer"],
-                    newStates: [StateChannel.State.Cleanup])
+                    newStates: [StateChannels.State.Cleanup])
             },
-            StateChannel.State.CoinFlip: {
-                Type<RevealSeed>(): StateChannel.StateTransition(
+            StateChannels.State.CoinFlip: {
+                Type<RevealSeed>(): StateChannels.StateTransition(
                     handler: RevealSeedHandler(),
                     newSignerRoles: ["player"],
-                    newStates: [StateChannel.State.MoveX]),
-                Type<StateChannel.Resign>(): StateChannel.StateTransition(
+                    newStates: [StateChannels.State.MoveX]),
+                Type<StateChannels.Resign>(): StateChannels.StateTransition(
                     handler: ResignationHandler(),
                     newSignerRoles: ["!signer"],
-                    newStates: [StateChannel.State.Cleanup])
+                    newStates: [StateChannels.State.Cleanup])
             },
-            StateChannel.State.MoveX: {
-                Type<RevealSeed>(): StateChannel.StateTransition(
+            StateChannels.State.MoveX: {
+                Type<RevealSeed>(): StateChannels.StateTransition(
                     handler: MoveHandler(),
                     newSignerRoles: ["player", "!signer"],
-                    newStates: [StateChannel.State.MoveO]),
-                Type<StateChannel.Resign>(): StateChannel.StateTransition(
+                    newStates: [StateChannels.State.MoveO]),
+                Type<StateChannels.Resign>(): StateChannels.StateTransition(
                     handler: ResignationHandler(),
                     newSignerRoles: ["!signer"],
-                    newStates: [StateChannel.State.Cleanup])
+                    newStates: [StateChannels.State.Cleanup])
             },
-            StateChannel.State.MoveO: {
-                Type<RevealSeed>(): StateChannel.StateTransition(
+            StateChannels.State.MoveO: {
+                Type<RevealSeed>(): StateChannels.StateTransition(
                     handler: MoveHandler(),
                     newSignerRoles: ["player", "!signer"],
-                    newStates: [StateChannel.State.MoveX]),
-                Type<StateChannel.Resign>(): StateChannel.StateTransition(
+                    newStates: [StateChannels.State.MoveX]),
+                Type<StateChannels.Resign>(): StateChannels.StateTransition(
                     handler: ResignationHandler(),
                     newSignerRoles: ["!signer"],
-                    newStates: [StateChannel.State.Cleanup])
+                    newStates: [StateChannels.State.Cleanup])
             }
         }
     }
 
-    access(all) struct ResignationHandler : StateChannel.ActionHandler {
-        access(all) fun handleAction(context: StateChannel.ChannelContext, action: {StateChannel.Action}) : StateChannel.ChannelContext {
+    access(all) struct ResignationHandler : StateChannels.ActionHandler {
+        access(all) fun handleAction(context: StateChannels.ChannelContext, action: {StateChannels.Action}) : StateChannels.ChannelContext {
             let otherParticipantList = context.participants.values.filter(
-                view fun (_ p: StateChannel.Participant):Bool {
+                view fun (_ p: StateChannels.Participant):Bool {
                     return !p.hasRole("signer")
                 }
             ) 
 
-            return context.removeSigner().updateSigner(id:otherParticipantList[0].id).updateState(StateChannel.State.Cleanup)
+            return context.removeSigner().updateSigner(id:otherParticipantList[0].id).updateState(StateChannels.State.Cleanup)
         }
     }
 
-    access(all) struct CloseChannel: StateChannel.Action {
+    access(all) struct CloseChannel: StateChannels.Action {
     }
 
-    access(all) struct CloseHandler: StateChannel.ActionHandler {
-        access(all) fun handleAction(context: StateChannel.ChannelContext, action: {StateChannel.Action}) : StateChannel.ChannelContext {
+    access(all) struct CloseHandler: StateChannels.ActionHandler {
+        access(all) fun handleAction(context: StateChannels.ChannelContext, action: {StateChannels.Action}) : StateChannels.ChannelContext {
             pre {
                 context.participants.length == 1: "Can only close the channel when one participant is left"
             }
@@ -151,7 +151,7 @@ access (all) contract TicTacPeer {
         }
     }
 
-    access(all) struct CommitSeed : StateChannel.Action {
+    access(all) struct CommitSeed : StateChannels.Action {
         access(all) let commitment: UInt256
 
         init(commitment: UInt256) {
@@ -159,18 +159,18 @@ access (all) contract TicTacPeer {
         }
     }
 
-    access(all) struct CommitSeedHandler : StateChannel.ActionHandler {
-        access(all) fun handleAction(context: StateChannel.ChannelContext, action: {StateChannel.Action}) : StateChannel.ChannelContext {
+    access(all) struct CommitSeedHandler : StateChannels.ActionHandler {
+        access(all) fun handleAction(context: StateChannels.ChannelContext, action: {StateChannels.Action}) : StateChannels.ChannelContext {
             var appContext: TicTacPeer.TicTacToeContext = context.appContext as! TicTacToeContext
             let commitAction: TicTacPeer.CommitSeed = action as! CommitSeed
 
             appContext = appContext.addP1SeedCommitment(p1SeedCommitment: commitAction.commitment)
 
-            return context.updateState(StateChannel.State.NeedSeed).updateSigner(id:1).updateAppContext(appContext)
+            return context.updateState(StateChannels.State.NeedSeed).updateSigner(id:1).updateAppContext(appContext)
         }
     }
 
-    access(all) struct ProvideSeed : StateChannel.Action {
+    access(all) struct ProvideSeed : StateChannels.Action {
         access(all) let contribution: UInt256
 
         init(contribution: UInt256) {
@@ -178,18 +178,18 @@ access (all) contract TicTacPeer {
         }
     }
 
-    access(all) struct ProvideSeedHandler : StateChannel.ActionHandler {
-        access(all) fun handleAction(context: StateChannel.ChannelContext, action: {StateChannel.Action}) : StateChannel.ChannelContext {
+    access(all) struct ProvideSeedHandler : StateChannels.ActionHandler {
+        access(all) fun handleAction(context: StateChannels.ChannelContext, action: {StateChannels.Action}) : StateChannels.ChannelContext {
             var appContext: TicTacPeer.TicTacToeContext = context.appContext as! TicTacToeContext
             let provideAction: TicTacPeer.ProvideSeed = action as! ProvideSeed
 
             appContext = appContext.addP2SeedContribution(p2SeedContribution: provideAction.contribution)
 
-            return context.updateState(StateChannel.State.CoinFlip).updateSigner(id:0).updateAppContext(appContext)
+            return context.updateState(StateChannels.State.CoinFlip).updateSigner(id:0).updateAppContext(appContext)
         }
     }
 
-    access(all) struct RevealSeed: StateChannel.Action {
+    access(all) struct RevealSeed: StateChannels.Action {
         access(all) let seed: UInt256
         access(all) let salt: UInt256
 
@@ -199,8 +199,8 @@ access (all) contract TicTacPeer {
         }
     }
 
-    access(all) struct RevealSeedHandler: StateChannel.ActionHandler {
-        access(all) fun handleAction(context: StateChannel.ChannelContext, action: {StateChannel.Action}) : StateChannel.ChannelContext {
+    access(all) struct RevealSeedHandler: StateChannels.ActionHandler {
+        access(all) fun handleAction(context: StateChannels.ChannelContext, action: {StateChannels.Action}) : StateChannels.ChannelContext {
             var appContext = context.appContext as! TicTacToeContext
             let revealAction = action as! RevealSeed
 
@@ -216,18 +216,18 @@ access (all) contract TicTacPeer {
             let startingPlayer = UInt32(channelSeed % 2)
 
             let playerList = context.participants.values.filter(
-                view fun (_ p: StateChannel.Participant):Bool {
+                view fun (_ p: StateChannels.Participant):Bool {
                     return p.hasRole("player")
                 }
             )
 
             let startingPlayerId = playerList[startingPlayer].id
 
-            return context.updateState(StateChannel.State.MoveX).updateSigner(id:startingPlayerId)
+            return context.updateState(StateChannels.State.MoveX).updateSigner(id:startingPlayerId)
         }
     }
 
-    access(all) struct Move: StateChannel.Action {
+    access(all) struct Move: StateChannels.Action {
         access(all) let x: UInt8
         access(all) let y: UInt8
 
@@ -241,18 +241,18 @@ access (all) contract TicTacPeer {
         }
     }
 
-    access(all) struct MoveHandler: StateChannel.ActionHandler {
-        access(all) fun handleAction(context: StateChannel.ChannelContext, action: {StateChannel.Action}) : StateChannel.ChannelContext {
+    access(all) struct MoveHandler: StateChannels.ActionHandler {
+        access(all) fun handleAction(context: StateChannels.ChannelContext, action: {StateChannels.Action}) : StateChannels.ChannelContext {
             var appContext = context.appContext as! TicTacToeContext
             let moveAction = action as! Move
 
             assert(appContext.boardContents(cellX: moveAction.x, cellY: moveAction.y) == 0, message: "Attempt to play in an occupied cell")
 
-            let playerSymbol: UInt8 = (context.state == StateChannel.State.MoveX) ? 1 : 2
+            let playerSymbol: UInt8 = (context.state == StateChannels.State.MoveX) ? 1 : 2
             appContext = appContext.modifyBoard(cellX: moveAction.x, cellY: moveAction.y, newValue: playerSymbol)
 
             let otherPlayerList = context.participants.values.filter(
-                view fun (_ p: StateChannel.Participant):Bool {
+                view fun (_ p: StateChannels.Participant):Bool {
                     return p.hasRole("player") && !p.hasRole("signer")
                 }
             )
