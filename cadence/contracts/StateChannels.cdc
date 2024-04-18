@@ -1,6 +1,6 @@
 access(all) contract StateChannels {
 
-    access(all) enum State : Int8 {
+    access(all) enum State : UInt8 {
         access(all) case Start
         access(all) case NeedSeed
         access(all) case CoinFlip
@@ -14,16 +14,7 @@ access(all) contract StateChannels {
     access(all) struct interface Action {}
 
     access(all) struct interface ActionHandler {
-        access(all) fun handleAction(context: ChannelContext, action: {Action}) : ChannelContext
-
-        access(all) fun isValidTransition(context: ChannelContext, action: {Action}, newContext: ChannelContext): Bool {
-
-            assert(context.appContext.isInstance(Type<{ComparableAppContext}>()), message: "Default validity check requires ComparableAppContext.")
-
-            let expectedContext: ChannelContext = self.handleAction(context: context, action: action)
-
-            return expectedContext.matchesChannelContext(newContext)
-        }
+        access(all) fun handleAction(context: &ChannelContext, action: {Action})
     }
 
     // An action used to indicate that the user wants to withdraw from the game
@@ -55,42 +46,46 @@ access(all) contract StateChannels {
         }
     }
 
-    access(all) struct interface AppContext {
-        access(all) view fun isValid(): Bool
+    access(all) resource interface AppContext {
+        access(all) view fun snapshot(): [UInt8]
+        access(all) fun updateToMatch(snapshot: [UInt8])
     }
 
-    access(all) struct interface ComparableAppContext: AppContext {
-        access(all) view fun matchesContext(_ otherContext: {ComparableAppContext}): Bool {
-            pre {
-                self.getType() == otherContext.getType()
-            }
-        }
-    }
-
-    access(all) struct ChannelContext {
+    access(all) resource ChannelContext {
         access(all) let state : State
         access(all) let signerId : UInt32?
         access(all) let participants: {UInt32: Participant}
         access(self) let nextParticipantId: UInt32
         access(self) let channelStep: UInt64
-        access(all) let appContext : {AppContext}
+        access(all) let appContext : @{AppContext}
 
         access(contract) view init(state: State, signerId: UInt32?, participants: {UInt32: Participant}, nextParticipantId: UInt32, channelStep: UInt64,
-                appContext: {AppContext}) {
+                appContext: @{AppContext}) {
             self.state = state
             self.signerId = signerId
             self.participants = participants
             self.nextParticipantId = nextParticipantId
             self.channelStep = channelStep
-            self.appContext = appContext
+            self.appContext <- appContext
         }
 
-        access(all) view fun matchesChannelContextWithoutAppContext(_ otherContext: ChannelContext): Bool {
-            if self.state != otherContext.state { return false }
-            if self.signerId != otherContext.signerId { return false }
-            // TODO: Participants
+        access(all) fun snapshot(): [UInt8] {
+            var snapshotBytes: [UInt8] = []
 
-            return true
+            snapshotBytes.concat(self.state.rawValue.toBigEndianBytes())
+            if self.signerId != nil {
+                snapshotBytes.append(1)
+                snapshotBytes.concat(self.signerId!.toBigEndianBytes())
+            } else {
+                snapshotBytes.append(0)
+            }
+
+            snapshotBytes.concat(self.participants.length.toBigEndianBytes())
+            for id in self.participants.keys {
+                
+            }
+
+            return snapshotBytes
         }
 
         access(all) view fun matchesChannelContext(_ otherContext: ChannelContext): Bool {
